@@ -5,7 +5,7 @@ src="./docs/icon.png" alt="Temporal Mapper Logo">
 
 ### V.1.2.1 - March 03 2026
 -----------------------------------------------
-This is a library for using the Mapper for temporal topic modelling. 
+This is a library for using density-based Mapper for temporal topic modelling. 
 The primary components are:
 * A scikit-learn compliant Mapper class `temporalmapper.Mapper` implementing density-based Mapper.
 * A much messier wrapper class `temporalmapper.TemporalMapper` that computes additional data useful for temporal topic modelling.
