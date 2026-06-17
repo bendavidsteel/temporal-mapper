@@ -73,8 +73,15 @@ def generate_keyword_labels(word_bags, mapper, ngram_vectorizer=None, n_words=3,
             cluster_vectors.append(cl_vector)
         # print("IWT on slice:",i,end="\r")
 
-        # IWT the vectors and get the most important keywords
-        cluster_vectors = np.squeeze(np.array(cluster_vectors))
+        # IWT the vectors and get the most important keywords.
+        # Slices can have zero non-outlier clusters; skip those so we don't
+        # hand an empty/0-d array to the information-weight transformer.
+        if len(cluster_vectors) == 0:
+            keywords.append([])
+            continue
+        # Stack into a (n_clusters, n_ngrams) 2-d array. np.squeeze would
+        # collapse the cluster axis for single-cluster slices, which breaks IWT.
+        cluster_vectors = np.vstack([np.asarray(v).ravel() for v in cluster_vectors])
         weighted_vectors = IWT.fit_transform(cluster_vectors)
         cluster_keywords = []
         for cl_vector in weighted_vectors:
