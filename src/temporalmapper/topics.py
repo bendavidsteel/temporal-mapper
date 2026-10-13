@@ -3,8 +3,9 @@ import numpy as np
 
 def topic_contract(mapper, v, dir='forward'):
     G = mapper.graph.to_undirected()
-    neighbours = G.neighbors(v)
-    d = len([n for n in neighbours])
+    # a list, not the neighbour iterator: it is read more than once below
+    neighbours = list(G.neighbors(v))
+    d = len(neighbours)
     if d == 0:
         return None
     if (mapper.graph.in_degree(v) == 1):
@@ -12,28 +13,24 @@ def topic_contract(mapper, v, dir='forward'):
     if (d==1) and (mapper.graph.out_degree(v) == 1):
         # this is v a source
         return None
-    idxs = nx.get_node_attributes(G, 'slice_no')
-    idx = idxs[v]
+    idx = G.nodes[v]['slice_no']
     w = mapper.weights[idx,:]
     sizes = np.array(
         [np.sum(w[mapper.get_vertex_data(u)]) for u in neighbours]
     )
-    sizes /= np.sum(sizes)
+    total = np.sum(sizes)
+    if total == 0:
+        return None
+    sizes = sizes / total
     impurity = 1 - np.sum(sizes**2)
-    topic = nx.get_node_attributes(G, 'topic')
     if impurity <= 1/(2*d):
         # highly homogeneous, merge node into most similar
-        s=0
-        best = v
-        for u in neighbours:
-            if sizes[u]>s:
-                s=sizes[u]
-                best = u
+        best = neighbours[int(np.argmax(sizes))]
+        # write to mapper.graph: G is an undirected copy, so changes to it are discarded
+        topic = nx.get_node_attributes(mapper.graph, 'topic')
         topic[v] = topic[best]
-    else:
-        pass
-    nx.set_node_attributes(G, topic, 'topic')
-         
+        nx.set_node_attributes(mapper.graph, topic, 'topic')
+
 def single_edge_contract(G, v):
     # special case to check for large semantic drift.
     drift = nx.get_edge_attributes(G, 'drift')

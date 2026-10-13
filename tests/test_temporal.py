@@ -63,3 +63,44 @@ def test_compute_temporal_mapper():
     ]
     for i in range(len(parameters)):
         assert hasattr(compute_temporal_mapper(kwargs=parameters[i]), "graph")
+
+
+class _StubMapper:
+    """The parts of TemporalMapper that topic_contract reads."""
+    def __init__(self, graph, weights, vertex_data):
+        self.graph, self.weights, self._vertex_data = graph, weights, vertex_data
+
+    def get_vertex_data(self, node):
+        return self._vertex_data[node]
+
+
+def _two_parent_mapper(n_a, n_b):
+    # v (slice 1) has two parents in slice 0 sharing n_a and n_b of its points
+    G = nx.DiGraph()
+    G.add_node('0:0', slice_no=0, topic=0)
+    G.add_node('0:1', slice_no=0, topic=1)
+    G.add_node('1:0', slice_no=1, topic=2)
+    G.add_edge('0:0', '1:0', drift=0.0)
+    G.add_edge('0:1', '1:0', drift=0.0)
+    n = n_a + n_b
+    weights = np.ones((2, n))
+    vertex_data = {
+        '0:0': np.arange(n_a),
+        '0:1': np.arange(n_a, n),
+        '1:0': np.arange(n),
+    }
+    return _StubMapper(G, weights, vertex_data)
+
+
+def test_topic_contract_merges_homogeneous_node():
+    from temporalmapper.topics import topic_contract
+    m = _two_parent_mapper(n_a=9, n_b=1)  # impurity 0.18 <= 1/(2*2)
+    topic_contract(m, '1:0')
+    assert m.graph.nodes['1:0']['topic'] == m.graph.nodes['0:0']['topic']
+
+
+def test_topic_contract_keeps_mixed_node():
+    from temporalmapper.topics import topic_contract
+    m = _two_parent_mapper(n_a=5, n_b=5)  # impurity 0.5 > 1/(2*2)
+    topic_contract(m, '1:0')
+    assert m.graph.nodes['1:0']['topic'] == 2
